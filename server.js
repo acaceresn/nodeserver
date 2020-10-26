@@ -1,90 +1,42 @@
 const express = require('express');
-const bodyParse = require('body-parser');
+const bcrypt = require('bcrypt-nodejs');
 const bodyParser = require('body-parser');
+const cors = require('cors');
+const knex = require('knex');
+
+const register = require('./controllers/register');
+const signin = require('./controllers/signin');
+const profile = require('./controllers/profile');
+const image = require('./controllers/image');
+
+const DBpg = knex({
+    client: 'pg',
+    connection: {
+      host : '127.0.0.1',
+      user : 'postgres',
+      password : 'Postgres22',
+      database : 'smart_brain'
+    }
+  });
+
 
 const app = express();
 
 app.use(bodyParser.json());
-
-const database = { 
-users: [
-    {
-        id: '123',
-        name: 'John',
-        email: 'john@gmail.com',
-        entries: 0,
-        joined: new Date()
-    },
-    {
-        id: '124',
-        name: 'Sally',
-        email: 'sally@gmail.com',
-        entries: 0,
-        joined: new Date()
-    },
-
-],
-login: [
-    {
-        id: '987',
-        hash: '',
-        email: 'john@gmail.com'
-    }
-]
-
-}
+app.use(cors());
 
 
-app.get('/', (req,res) => {
-   res.send(database.users);
-}) 
+app.get('/', (req,res) => { res.send('Server Ok'); }); 
 
-app.post('/signin', (req,res) => {
-    if ((req.body.email === database.users[0].email) && (req.body.password === database.users[0].password)) {
-        res.json('Success');
-    } else {
-        res.status(400).json('Error LogingIn') 
-    }
-})
+app.post('/signin', (req, res) => { signin.handleSignin(req, res, DBpg, bcrypt) });
 
-app.post('/register', (req,res) => {
-   const {email, password, name } = req.body;
-   bcrypt.hash(password, null, null, function(err, hash) {
-      console.log(hash);
-   });
-   database.users.push(
-    {
-        id: '125',
-        name: name,
-        email: email,
-        password: password,
-        entries: 0,
-        joined: new Date()
-    })
-   res.json(database.users[database.users.length-1]); 
-})
+app.post('/register',  (req, res) => { register.handleRegister(req, res, DBpg, bcrypt) });
 
-app.get('/profile/:id', (req, res) => {
-    const { id } = req.params;
-    database.users.forEach(user => {
-        if (user.id === id) {
-            return res.json(user); 
-        }
-    })
-    res.json("User doesn't exists in Database.");
-})
+app.get('/profile/:id', (req, res) => { profile.handleProfile(req, res, DBpg) });
 
-app.post('/image', (req, res) => {
-    const { id } = req.body;
-    database.users.forEach(user => {
-        if (user.id === id) {
-            user.entries++;
-            return res.json(user.entries); 
-        }
-    })
-    res.json("User doesn't exists in Database.");
-})
+app.put('/image', (req, res) => { image.handleImage(req, res, DBpg) });
 
+app.post('/imageurl', (req, res) => { image.handleApiCall(req, res) });
 
 
 app.listen(3050, ()=> {
